@@ -209,7 +209,7 @@ The `.deb` package will be in:
 - **No Support**: For OpenCode support, please use the [official channels](https://github.com/anomalyco/opencode/discussions)
 - **No Warranty**: Desktop builds are provided as-is without warranty
 - **Ubuntu 22.04 Only**: These builds are specifically compiled for Ubuntu 22.04 and may not work on other distributions
-- **No Auto-Updates**: Builds are unsigned and do not support Tauri's auto-update mechanism
+- **No Auto-Updates**: Fork builds do not support Tauri's auto-update mechanism. Users must manually download new releases from the [Releases page](../../releases)
 
 ---
 
