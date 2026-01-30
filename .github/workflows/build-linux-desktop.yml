@@ -3,6 +3,8 @@ run-name: "Build desktop app from latest tag"
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *" # Run daily at 2 AM UTC
 
 permissions:
   contents: write
@@ -20,6 +22,14 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+
+      - name: Fetch tags from upstream
+        run: |
+          git remote add upstream https://github.com/anomalyco/opencode.git
+          git fetch upstream --tags
+          echo "📥 Fetched tags from upstream"
+          echo "Latest upstream tags:"
+          git tag --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | head -5
 
       - name: Find latest tag
         id: find
