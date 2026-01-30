@@ -241,7 +241,7 @@ jobs:
       - name: Rename artifact
         run: |
           cd packages/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb
-          ORIGINAL_NAME=$(ls opencode-desktop_*.deb)
+          ORIGINAL_NAME=$(ls OpenCode_*.deb)
           NEW_NAME="opencode-desktop_${{ needs.find-tag.outputs.version }}_ubuntu2204_amd64.deb"
           mv "$ORIGINAL_NAME" "$NEW_NAME"
           echo "📦 Renamed: $ORIGINAL_NAME → $NEW_NAME"
