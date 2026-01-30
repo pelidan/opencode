@@ -1,3 +1,56 @@
+# OpenCode Desktop Build Fork
+
+> **This is a community fork** of [OpenCode](https://github.com/anomalyco/opencode) focused on providing Linux desktop builds for Ubuntu 22.04.
+
+## About This Fork
+
+This repository is maintained to build the **OpenCode Desktop application** specifically for **Ubuntu 22.04 (x86_64)**. The upstream OpenCode project is developed by [Anomaly Co](https://github.com/anomalyco) and provides a full-featured AI coding agent with CLI, desktop, and web interfaces.
+
+### What This Fork Provides
+
+- **Linux Desktop Builds**: Pre-built `.deb` packages for Ubuntu 22.04
+- **Automated Releases**: GitHub Actions workflow that builds from upstream tags
+- **Release Naming**: `v{VERSION}-ubuntu2204` (e.g., `v1.1.45-ubuntu2204`)
+
+### Upstream Repository
+
+**Official OpenCode Project**: [github.com/anomalyco/opencode](https://github.com/anomalyco/opencode)
+
+For the full OpenCode experience including:
+
+- CLI installation (npm, brew, scoop, etc.)
+- Official desktop builds for all platforms
+- Documentation and support
+- Contributing guidelines
+- Community and Discord
+
+Please visit the [upstream repository](https://github.com/anomalyco/opencode) and [opencode.ai](https://opencode.ai).
+
+---
+
+## Installation (Ubuntu 22.04)
+
+### Download from Releases
+
+1. Go to the [Releases](../../releases) page
+2. Download the latest `.deb` package: `opencode-desktop_{VERSION}_ubuntu2204_amd64.deb`
+3. Install:
+
+```bash
+sudo dpkg -i opencode-desktop_*_ubuntu2204_amd64.deb
+sudo apt-get install -f  # Fix any dependency issues
+```
+
+### System Requirements
+
+- Ubuntu 22.04 (x86_64)
+- ~200MB disk space
+- Dependencies (auto-installed): webkit2gtk, libappindicator3
+
+---
+
+## About OpenCode
+
 <p align="center">
   <a href="https://opencode.ai">
     <picture>
@@ -8,37 +61,12 @@
   </a>
 </p>
 <p align="center">The open source AI coding agent.</p>
-<p align="center">
-  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
-</p>
-
-<p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh.md">简体中文</a> |
-  <a href="README.zht.md">繁體中文</a> |
-  <a href="README.ko.md">한국어</a> |
-  <a href="README.de.md">Deutsch</a> |
-  <a href="README.es.md">Español</a> |
-  <a href="README.fr.md">Français</a> |
-  <a href="README.it.md">Italiano</a> |
-  <a href="README.da.md">Dansk</a> |
-  <a href="README.ja.md">日本語</a> |
-  <a href="README.pl.md">Polski</a> |
-  <a href="README.ru.md">Русский</a> |
-  <a href="README.ar.md">العربية</a> |
-  <a href="README.no.md">Norsk</a> |
-  <a href="README.br.md">Português (Brasil)</a> |
-  <a href="README.th.md">ไทย</a> |
-  <a href="README.tr.md">Türkçe</a>
-</p>
 
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---
 
-### Installation
+### Official Installation Methods (Upstream)
 
 ```bash
 # YOLO
@@ -58,16 +86,17 @@ nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev
 > [!TIP]
 > Remove versions older than 0.1.x before installing.
 
-### Desktop App (BETA)
+### Official Desktop App (BETA) - Upstream
 
-OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+For official desktop builds for all platforms, visit the [upstream releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
 
 | Platform              | Download                              |
 | --------------------- | ------------------------------------- |
 | macOS (Apple Silicon) | `opencode-desktop-darwin-aarch64.dmg` |
 | macOS (Intel)         | `opencode-desktop-darwin-x64.dmg`     |
 | Windows               | `opencode-desktop-windows-x64.exe`    |
-| Linux                 | `.deb`, `.rpm`, or AppImage           |
+| Linux (official)      | `.deb`, `.rpm`, or AppImage           |
+| **Linux (this fork)** | **Ubuntu 22.04 `.deb` only**          |
 
 ```bash
 # macOS (Homebrew)
@@ -91,6 +120,10 @@ OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bas
 XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
 ```
 
+---
+
+## Upstream Documentation & Resources
+
 ### Agents
 
 OpenCode includes two built-in agents you can switch between with the `Tab` key.
@@ -108,11 +141,77 @@ Learn more about [agents](https://opencode.ai/docs/agents).
 
 ### Documentation
 
-For more info on how to configure OpenCode [**head over to our docs**](https://opencode.ai/docs).
+For configuration, usage, and more: [**opencode.ai/docs**](https://opencode.ai/docs)
 
 ### Contributing
 
-If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
+Contributions should be made to the upstream repository. See [contributing docs](https://github.com/anomalyco/opencode/blob/dev/CONTRIBUTING.md).
+
+### Community
+
+**Join the OpenCode community**:
+
+- [Discord](https://discord.gg/opencode)
+- [X.com](https://x.com/opencode)
+- [GitHub Discussions](https://github.com/anomalyco/opencode/discussions)
+
+---
+
+## Fork Maintenance
+
+### Build Workflow
+
+This fork uses a GitHub Actions workflow to automatically build desktop releases from upstream tags:
+
+- **Workflow**: `.github/workflows/build-linux-desktop.yml`
+- **Trigger**: Manual (workflow_dispatch)
+- **Source**: Latest upstream `v*.*.*` tag
+- **Output**: `.deb` package for Ubuntu 22.04 x86_64
+- **Release**: Tagged as `v{VERSION}-ubuntu2204`
+
+### Building Locally
+
+To build the desktop app locally:
+
+```bash
+# Prerequisites
+sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Clone and build
+git clone https://github.com/YOUR-FORK/opencode.git
+cd opencode
+git checkout v1.1.45  # or latest tag
+bun install
+cd packages/desktop
+bun ./scripts/prepare.ts
+cargo tauri build --target x86_64-unknown-linux-gnu --bundles deb
+```
+
+The `.deb` package will be in:
+`packages/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/`
+
+---
+
+## Disclaimers
+
+- **Not Affiliated**: This fork is not built by or affiliated with the OpenCode team or Anomaly Co
+- **No Support**: For OpenCode support, please use the [official channels](https://github.com/anomalyco/opencode/discussions)
+- **No Warranty**: Desktop builds are provided as-is without warranty
+- **Ubuntu 22.04 Only**: These builds are specifically compiled for Ubuntu 22.04 and may not work on other distributions
+- **No Auto-Updates**: Builds are unsigned and do not support Tauri's auto-update mechanism
+
+---
+
+## License
+
+This fork maintains the same [MIT License](LICENSE) as the upstream OpenCode project.
+
+Copyright (c) 2024 Anomaly Innovations LLC (upstream)
+
+---
+
+## FAQ (Upstream)
 
 ### Building on OpenCode
 
@@ -120,7 +219,7 @@ If you are working on a project that's related to OpenCode and is using "opencod
 
 ### FAQ
 
-#### How is this different from Claude Code?
+### How is this different from Claude Code?
 
 It's very similar to Claude Code in terms of capability. Here are the key differences:
 
@@ -130,6 +229,8 @@ It's very similar to Claude Code in terms of capability. Here are the key differ
 - A focus on TUI. OpenCode is built by neovim users and the creators of [terminal.shop](https://terminal.shop); we are going to push the limits of what's possible in the terminal.
 - A client/server architecture. This for example can allow OpenCode to run on your computer, while you can drive it remotely from a mobile app. Meaning that the TUI frontend is just one of the possible clients.
 
+For more FAQs, visit the [upstream documentation](https://opencode.ai/docs).
+
 ---
 
-**Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
+**Upstream Resources**: [OpenCode.ai](https://opencode.ai) | [GitHub](https://github.com/anomalyco/opencode) | [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
