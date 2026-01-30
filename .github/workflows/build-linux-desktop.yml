@@ -1,5 +1,5 @@
 name: Build Linux Desktop Release
-run-name: "Build desktop app from tag ${{ needs.find-tag.outputs.release_tag }}"
+run-name: "Build desktop app from latest tag"
 
 on:
   workflow_dispatch:
