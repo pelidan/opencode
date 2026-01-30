@@ -26,6 +26,23 @@ For the full OpenCode experience including:
 
 Please visit the [upstream repository](https://github.com/anomalyco/opencode) and [opencode.ai](https://opencode.ai).
 
+### Branch Structure
+
+This fork maintains a clean separation between upstream code and build infrastructure:
+
+- **`dev` branch**: Clean mirror of upstream [anomalyco/opencode:dev](https://github.com/anomalyco/opencode/tree/dev)
+  - Syncs directly with upstream
+  - No fork-specific modifications
+  - Used as source for builds
+
+- **`ubuntu2204-builds` branch** (default): Build infrastructure for Ubuntu 22.04 packages
+  - Contains GitHub Actions workflow
+  - Build configuration and patches
+  - Fork-specific documentation (this README)
+  - Releases published from this branch
+
+This structure enables conflict-free synchronization with upstream while maintaining our build system.
+
 ---
 
 ## Installation (Ubuntu 22.04)
