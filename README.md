@@ -166,6 +166,9 @@ This fork uses a GitHub Actions workflow to automatically build desktop releases
 - **Workflow**: `.github/workflows/build-linux-desktop.yml`
 - **Trigger**: Manual (workflow_dispatch)
 - **Source**: Latest upstream `v*.*.*` tag
+- **Build Process**:
+  1. Builds OpenCode CLI for Linux x64
+  2. Builds desktop app with CLI bundled as sidecar
 - **Output**: `.deb` package for Ubuntu 22.04 x86_64
 - **Release**: Tagged as `v{VERSION}-ubuntu2204`
 
@@ -179,12 +182,19 @@ sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Clone and build
-git clone https://github.com/YOUR-FORK/opencode.git
+git clone https://github.com/pelidan/opencode.git
 cd opencode
 git checkout v1.1.45  # or latest tag
-bun install
+
+# Build CLI (Linux x64)
+cd packages/opencode
+OPENCODE_VERSION=1.1.45 OPENCODE_CHANNEL=latest HUSKY=0 bun install
+OPENCODE_VERSION=1.1.45 OPENCODE_CHANNEL=latest bun run script/build.ts --single
+cd ../..
+
+# Build desktop app
 cd packages/desktop
-bun ./scripts/prepare.ts
+OPENCODE_VERSION=1.1.45 RUST_TARGET=x86_64-unknown-linux-gnu bun ./scripts/prepare.ts
 cargo tauri build --target x86_64-unknown-linux-gnu --bundles deb
 ```
 

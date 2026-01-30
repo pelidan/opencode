@@ -62,11 +62,72 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-  build-desktop:
+  build-cli:
     runs-on: ubuntu-22.04
     needs: [find-tag, check-release]
     if: needs.check-release.outputs.exists == 'false'
-    timeout-minutes: 60
+    timeout-minutes: 15
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.find-tag.outputs.tag }}
+          fetch-tags: true
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            packages/opencode/node_modules
+          key: ubuntu-22.04-bun-${{ hashFiles('bun.lockb') }}
+          restore-keys: ubuntu-22.04-bun-
+
+      - name: Install dependencies
+        run: |
+          cd packages/opencode
+          bun install
+        env:
+          HUSKY: 0
+
+      - name: Build CLI (Linux x64 only)
+        run: |
+          cd packages/opencode
+          bun run script/build.ts --single
+        env:
+          OPENCODE_VERSION: ${{ needs.find-tag.outputs.version }}
+          OPENCODE_CHANNEL: latest
+
+      - name: Verify build output
+        run: |
+          BINARY_PATH="packages/opencode/dist/opencode-linux-x64/bin/opencode"
+
+          echo "Checking if binary exists..."
+          ls -lh "$BINARY_PATH"
+
+          echo "Checking binary type..."
+          file "$BINARY_PATH" | grep -q "ELF 64-bit" || (echo "❌ Not a valid 64-bit ELF binary" && exit 1)
+
+          echo "Running smoke test..."
+          "$BINARY_PATH" --version
+
+          echo "✅ CLI binary verified successfully"
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-cli
+          path: packages/opencode/dist
+          if-no-files-found: error
+
+  build-desktop:
+    runs-on: ubuntu-22.04
+    needs: [find-tag, check-release, build-cli]
+    if: needs.check-release.outputs.exists == 'false'
+    timeout-minutes: 75
     steps:
       - name: Checkout tag
         uses: actions/checkout@v3
@@ -166,7 +227,7 @@ jobs:
 
   summary:
     runs-on: ubuntu-22.04
-    needs: [find-tag, check-release, build-desktop, create-release]
+    needs: [find-tag, check-release, build-cli, build-desktop, create-release]
     if: always()
     steps:
       - name: Generate workflow summary
@@ -176,7 +237,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Release \`${{ needs.find-tag.outputs.release_tag }}\` already exists." >> $GITHUB_STEP_SUMMARY
             echo "No build was performed." >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.build-desktop.result }}" == "success" ] && [ "${{ needs.create-release.result }}" == "success" ]; then
+          elif [ "${{ needs.build-cli.result }}" == "success" ] && [ "${{ needs.build-desktop.result }}" == "success" ] && [ "${{ needs.create-release.result }}" == "success" ]; then
             echo "### ✅ Release Created Successfully" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Built and released:** \`${{ needs.find-tag.outputs.release_tag }}\`" >> $GITHUB_STEP_SUMMARY
@@ -184,6 +245,8 @@ jobs:
             echo "**Artifact:** \`opencode-desktop_${{ needs.find-tag.outputs.version }}_ubuntu2204_amd64.deb\`" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Source tag:** \`${{ needs.find-tag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**CLI built:** Linux x64 (opencode-linux-x64)" >> $GITHUB_STEP_SUMMARY
           else
             echo "### ❌ Build Failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
