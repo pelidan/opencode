@@ -1,5 +1,5 @@
 name: Build Linux Desktop Release
-run-name: "Build desktop app from latest tag"
+run-name: "Build desktop app from latest release"
 
 on:
   workflow_dispatch:
@@ -10,45 +10,65 @@ permissions:
   contents: write
 
 jobs:
+  # Fetches the latest stable (non-prerelease) release from upstream using GitHub API
   find-tag:
     runs-on: ubuntu-22.04
     outputs:
-      tag: ${{ steps.find.outputs.tag }}
-      version: ${{ steps.find.outputs.version }}
-      release_tag: ${{ steps.find.outputs.release_tag }}
+      tag: ${{ steps.fetch.outputs.tag }}
+      version: ${{ steps.fetch.outputs.version }}
+      release_tag: ${{ steps.fetch.outputs.release_tag }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-          fetch-tags: true
+          fetch-depth: 1
 
-      - name: Fetch tags from upstream
+      - name: Fetch latest stable release from upstream
+        id: fetch
         run: |
-          git remote add upstream https://github.com/anomalyco/opencode.git
-          git fetch upstream --tags
-          echo "📥 Fetched tags from upstream"
-          echo "Latest upstream tags:"
-          git tag --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | head -5
+          echo "🔍 Fetching latest stable release from anomalyco/opencode..."
 
-      - name: Find latest tag
-        id: find
-        run: |
-          TAG=$(git tag --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | head -1)
-          if [ -z "$TAG" ]; then
-            echo "❌ No version tags found"
+          # Fetch all releases and filter for stable (non-prerelease, non-draft)
+          RELEASE_DATA=$(curl -fsSL https://api.github.com/repos/anomalyco/opencode/releases | \
+            jq -r '[.[] | select(.prerelease == false and .draft == false)][0]')
+
+          # Extract tag name
+          TAG=$(echo "$RELEASE_DATA" | jq -r '.tag_name')
+
+          # Validate tag was found
+          if [ "$TAG" = "null" ] || [ -z "$TAG" ]; then
+            echo "❌ No stable releases found in upstream repository"
             exit 1
           fi
+
+          # Validate tag format (v#.#.#)
+          if ! echo "$TAG" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$"; then
+            echo "❌ Invalid tag format: $TAG (expected v#.#.#)"
+            exit 1
+          fi
+
+          # Check if release has assets (indicates it's complete)
+          ASSET_COUNT=$(echo "$RELEASE_DATA" | jq -r '.assets | length')
+          if [ "$ASSET_COUNT" -eq 0 ]; then
+            echo "⚠️  Warning: Release $TAG has no assets (may be incomplete)"
+            exit 1
+          fi
+
+          # Extract version and construct our release tag
           VERSION=${TAG#v}
           RELEASE_TAG="${TAG}-ubuntu2204"
 
+          # Set outputs
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
-          echo "📦 Found latest tag: $TAG"
+          # Display information
+          echo "✅ Found latest stable release from upstream"
+          echo "📦 Upstream release: $TAG"
           echo "📋 Version: $VERSION"
-          echo "🏷️  Release tag: $RELEASE_TAG"
+          echo "🏷️  Our release tag: $RELEASE_TAG"
+          echo "📊 Assets in release: $ASSET_COUNT"
 
   check-release:
     runs-on: ubuntu-22.04
