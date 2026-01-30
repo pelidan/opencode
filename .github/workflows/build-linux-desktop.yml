@@ -177,9 +177,15 @@ jobs:
         with:
           path: |
             ~/.bun/install/cache
-            packages/desktop/node_modules
+            node_modules
+            packages/*/node_modules
           key: ubuntu-22.04-bun-desktop-${{ hashFiles('bun.lockb') }}
           restore-keys: ubuntu-22.04-bun-desktop-
+
+      - name: Install dependencies
+        run: bun install
+        env:
+          HUSKY: 0
 
       - name: Cache apt packages
         uses: actions/cache@v4
