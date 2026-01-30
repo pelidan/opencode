@@ -167,6 +167,19 @@ jobs:
           ref: ${{ needs.find-tag.outputs.tag }}
           fetch-tags: true
 
+      - name: Checkout build configuration
+        uses: actions/checkout@v3
+        with:
+          ref: ubuntu2204-builds
+          path: .build-config
+          sparse-checkout: |
+            .github/workflows/patches
+
+      - name: Apply Tauri configuration patch
+        run: |
+          patch -p1 < .build-config/.github/workflows/patches/tauri-config.patch
+          echo "✅ Applied Tauri configuration patch (disabled updater for fork)"
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
