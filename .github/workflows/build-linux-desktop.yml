@@ -176,7 +176,6 @@ jobs:
           path: .build-config
           sparse-checkout: |
             .github/workflows/patches
-
       - name: Apply Tauri configuration patch
         run: |
           patch -p1 < .build-config/.github/workflows/patches/tauri-config.patch
@@ -230,6 +229,11 @@ jobs:
         with:
           name: opencode-cli
           path: packages/desktop/src-tauri/target/opencode-binaries
+
+      - name: Apply prepare script fix
+        run: |
+          cp .build-config/.github/workflows/patches/prepare.ts packages/desktop/scripts/prepare.ts
+          echo "✅ Applied prepare script fix from fork"
 
       - name: Prepare desktop build
         run: |
