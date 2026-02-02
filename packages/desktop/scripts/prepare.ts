@@ -15,7 +15,7 @@ const dir = "src-tauri/target/opencode-binaries"
 
 await $`mkdir -p ${dir}`
 
-if (!Bun.env.SKIP_DOWNLOAD) {
+if (Bun.env.SKIP_DOWNLOAD !== "true") {
   await $`gh run download ${Bun.env.GITHUB_RUN_ID} -n opencode-cli`.cwd(dir)
 }
 
