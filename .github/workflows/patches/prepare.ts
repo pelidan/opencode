@@ -15,8 +15,8 @@ const dir = "src-tauri/target/opencode-binaries"
 
 await $`mkdir -p ${dir}`
 
-if (Bun.env.SKIP_DOWNLOAD !== "true") {
-  await $`gh run download ${Bun.env.GITHUB_RUN_ID} -n opencode-cli`.cwd(dir)
-}
+// CLI artifact download from upstream is never allowed
+// The CLI must be built locally in this workflow and placed in the target directory
+console.log("Using locally built CLI artifact (upstream download disabled)")
 
 await copyBinaryToSidecarFolder(windowsify(`${dir}/${sidecarConfig.ocBinary}/bin/opencode`))
