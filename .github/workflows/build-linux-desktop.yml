@@ -228,7 +228,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: opencode-cli
-          path: packages/desktop/src-tauri/target/opencode-binaries
+          path: packages/desktop/src-tauri/target/opencode-binaries-temp
+
+      - name: Move CLI binary to expected location
+        run: |
+          mkdir -p packages/desktop/src-tauri/target/opencode-binaries
+          mv packages/desktop/src-tauri/target/opencode-binaries-temp/* packages/desktop/src-tauri/target/opencode-binaries/
+          ls -la packages/desktop/src-tauri/target/opencode-binaries/
+          echo "✅ CLI binary moved to expected location"
 
       - name: Apply prepare script fix
         run: |
