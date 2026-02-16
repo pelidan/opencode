@@ -1,0 +1,318 @@
+name: Build Linux Desktop Release
+run-name: "Build desktop app from latest release"
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *" # Run daily at 2 AM UTC
+
+permissions:
+  contents: write
+
+jobs:
+  # Fetches the latest stable (non-prerelease) release from upstream using GitHub API
+  find-tag:
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.fetch.outputs.tag }}
+      version: ${{ steps.fetch.outputs.version }}
+      release_tag: ${{ steps.fetch.outputs.release_tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Fetch latest stable release from upstream
+        id: fetch
+        run: |
+          echo "🔍 Fetching latest stable release from anomalyco/opencode..."
+
+          # Fetch all releases and filter for stable (non-prerelease, non-draft)
+          RELEASE_DATA=$(curl -fsSL https://api.github.com/repos/anomalyco/opencode/releases | \
+            jq -r '[.[] | select(.prerelease == false and .draft == false)][0]')
+
+          # Extract tag name
+          TAG=$(echo "$RELEASE_DATA" | jq -r '.tag_name')
+
+          # Validate tag was found
+          if [ "$TAG" = "null" ] || [ -z "$TAG" ]; then
+            echo "❌ No stable releases found in upstream repository"
+            exit 1
+          fi
+
+          # Validate tag format (v#.#.#)
+          if ! echo "$TAG" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$"; then
+            echo "❌ Invalid tag format: $TAG (expected v#.#.#)"
+            exit 1
+          fi
+
+          # Check if release has assets (indicates it's complete)
+          ASSET_COUNT=$(echo "$RELEASE_DATA" | jq -r '.assets | length')
+          if [ "$ASSET_COUNT" -eq 0 ]; then
+            echo "⚠️  Warning: Release $TAG has no assets (may be incomplete)"
+            exit 1
+          fi
+
+          # Extract version and construct our release tag
+          VERSION=${TAG#v}
+          RELEASE_TAG="${TAG}-ubuntu2204"
+
+          # Set outputs
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+
+          # Display information
+          echo "✅ Found latest stable release from upstream"
+          echo "📦 Upstream release: $TAG"
+          echo "📋 Version: $VERSION"
+          echo "🏷️  Our release tag: $RELEASE_TAG"
+          echo "📊 Assets in release: $ASSET_COUNT"
+
+  check-release:
+    runs-on: ubuntu-22.04
+    needs: find-tag
+    outputs:
+      exists: ${{ steps.check.outputs.exists }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Check if release exists
+        id: check
+        run: |
+          if gh release view "${{ needs.find-tag.outputs.release_tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Release ${{ needs.find-tag.outputs.release_tag }} already exists, skipping build"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "🚀 Release ${{ needs.find-tag.outputs.release_tag }} does not exist, proceeding with build"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  build-cli:
+    runs-on: ubuntu-22.04
+    needs: [find-tag, check-release]
+    if: needs.check-release.outputs.exists == 'false'
+    timeout-minutes: 15
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v3
+        with:
+          repository: anomalyco/opencode
+          ref: ${{ needs.find-tag.outputs.tag }}
+          fetch-tags: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            packages/opencode/node_modules
+          key: ubuntu-22.04-bun-${{ hashFiles('bun.lockb') }}
+          restore-keys: ubuntu-22.04-bun-
+
+      - name: Install dependencies
+        run: |
+          cd packages/opencode
+          bun install
+        env:
+          HUSKY: 0
+
+      - name: Build CLI (Linux x64 only)
+        run: |
+          cd packages/opencode
+          bun run script/build.ts --single
+        env:
+          OPENCODE_VERSION: ${{ needs.find-tag.outputs.version }}
+          OPENCODE_CHANNEL: latest
+
+      - name: Verify build output
+        run: |
+          BINARY_PATH="packages/opencode/dist/opencode-linux-x64/bin/opencode"
+
+          echo "Checking if binary exists..."
+          ls -lh "$BINARY_PATH"
+
+          echo "Checking binary type..."
+          file "$BINARY_PATH" | grep -q "ELF 64-bit" || (echo "❌ Not a valid 64-bit ELF binary" && exit 1)
+
+          echo "Running smoke test..."
+          "$BINARY_PATH" --version
+
+          echo "✅ CLI binary verified successfully"
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-cli
+          path: packages/opencode/dist
+          if-no-files-found: error
+
+  build-desktop:
+    runs-on: ubuntu-22.04
+    needs: [find-tag, check-release, build-cli]
+    if: needs.check-release.outputs.exists == 'false'
+    timeout-minutes: 75
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v3
+        with:
+          repository: anomalyco/opencode
+          ref: ${{ needs.find-tag.outputs.tag }}
+          fetch-tags: true
+
+      - name: Checkout build configuration
+        uses: actions/checkout@v3
+        with:
+          ref: ubuntu2204-builds
+          path: .build-config
+          sparse-checkout: |
+            .github/workflows/patches
+      - name: Apply Tauri configuration patch
+        run: |
+          patch -p1 < .build-config/.github/workflows/patches/tauri-config.patch
+          echo "✅ Applied Tauri configuration patch (disabled updater for fork)"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            packages/*/node_modules
+          key: ubuntu-22.04-bun-desktop-${{ hashFiles('bun.lockb') }}
+          restore-keys: ubuntu-22.04-bun-desktop-
+
+      - name: Install dependencies
+        run: bun install
+        env:
+          HUSKY: 0
+
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ubuntu-22.04-apt-${{ hashFiles('.github/workflows/build-linux-desktop.yml') }}
+          restore-keys: ubuntu-22.04-apt-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/desktop/src-tauri
+          shared-key: x86_64-unknown-linux-gnu
+
+      - name: Download CLI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: opencode-cli
+          path: packages/desktop/src-tauri/target/opencode-binaries
+
+      - name: Apply prepare script fix
+        run: |
+          cp .build-config/.github/workflows/patches/prepare.ts packages/desktop/scripts/prepare.ts
+          echo "✅ Applied prepare script fix from fork"
+
+      - name: Prepare desktop build
+        run: |
+          cd packages/desktop
+          bun ./scripts/prepare.ts
+        env:
+          OPENCODE_VERSION: ${{ needs.find-tag.outputs.version }}
+          RUST_TARGET: x86_64-unknown-linux-gnu
+
+      - name: Build Tauri desktop app
+        run: |
+          cd packages/desktop
+          bun tauri build --target x86_64-unknown-linux-gnu --config ./src-tauri/tauri.prod.conf.json --bundles deb
+
+      - name: Rename artifact
+        run: |
+          cd packages/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb
+          ORIGINAL_NAME=$(ls OpenCode_*.deb)
+          NEW_NAME="opencode-desktop_${{ needs.find-tag.outputs.version }}_ubuntu2204_amd64.deb"
+          mv "$ORIGINAL_NAME" "$NEW_NAME"
+          echo "📦 Renamed: $ORIGINAL_NAME → $NEW_NAME"
+          ls -lh "$NEW_NAME"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-desktop-deb
+          path: packages/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/opencode-desktop_${{ needs.find-tag.outputs.version }}_ubuntu2204_amd64.deb
+          if-no-files-found: error
+
+  create-release:
+    runs-on: ubuntu-22.04
+    needs: [find-tag, check-release, build-desktop]
+    if: needs.check-release.outputs.exists == 'false'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: opencode-desktop-deb
+          path: ./artifacts
+
+      - name: Create GitHub release
+        run: |
+          gh release create "${{ needs.find-tag.outputs.release_tag }}" \
+            --title "OpenCode Desktop v${{ needs.find-tag.outputs.version }} (Ubuntu 22.04)" \
+            --notes "Desktop application built from upstream tag ${{ needs.find-tag.outputs.tag }} for Ubuntu 22.04 (x86_64)" \
+            ./artifacts/opencode-desktop_${{ needs.find-tag.outputs.version }}_ubuntu2204_amd64.deb
+
+          echo "✅ Release created: ${{ needs.find-tag.outputs.release_tag }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  summary:
+    runs-on: ubuntu-22.04
+    needs: [find-tag, check-release, build-cli, build-desktop, create-release]
+    if: always()
+    steps:
+      - name: Generate workflow summary
+        run: |
+          if [ "${{ needs.check-release.outputs.exists }}" == "true" ]; then
+            echo "### ⏭️ Release Already Exists" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Release \`${{ needs.find-tag.outputs.release_tag }}\` already exists." >> $GITHUB_STEP_SUMMARY
+            echo "No build was performed." >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.build-cli.result }}" == "success" ] && [ "${{ needs.build-desktop.result }}" == "success" ] && [ "${{ needs.create-release.result }}" == "success" ]; then
+            echo "### ✅ Release Created Successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Built and released:** \`${{ needs.find-tag.outputs.release_tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Artifact:** \`opencode-desktop_${{ needs.find-tag.outputs.version }}_ubuntu2204_amd64.deb\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Source tag:** \`${{ needs.find-tag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**CLI built:** Linux x64 (opencode-linux-x64)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Build Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Check the logs above for error details." >> $GITHUB_STEP_SUMMARY
+          fi
