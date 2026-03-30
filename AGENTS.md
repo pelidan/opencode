@@ -48,6 +48,22 @@ bun typecheck              # From a package directory (e.g. packages/opencode)
 ./script/generate.ts
 ```
 
+## CI: Ubuntu 22.04 Desktop Build
+
+The workflow lives on the `ubuntu2204-builds` branch. Since `gh` defaults to the upstream remote, always target the fork explicitly:
+
+```bash
+# Trigger a force rebuild of the latest upstream tag
+gh api "repos/pelidan/opencode/actions/workflows/build-linux-desktop.yml/dispatches" \
+  -X POST --input - <<'EOF'
+{"ref":"ubuntu2204-builds","inputs":{"force_rebuild":"true"}}
+EOF
+
+# Check the latest run status
+gh api "repos/pelidan/opencode/actions/runs?branch=ubuntu2204-builds&per_page=1" \
+  --jq '.workflow_runs[0] | "\(.status) \(.conclusion // "—") \(.html_url)"'
+```
+
 ## Testing
 
 ```bash
