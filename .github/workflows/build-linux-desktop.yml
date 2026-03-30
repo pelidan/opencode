@@ -36,7 +36,8 @@ jobs:
           echo "🔍 Fetching latest stable release from anomalyco/opencode..."
 
           # Fetch all releases and filter for stable (non-prerelease, non-draft)
-          RELEASE_DATA=$(curl -fsSL https://api.github.com/repos/anomalyco/opencode/releases | \
+          RELEASE_DATA=$(curl -fsSL -H "Authorization: token $GITHUB_TOKEN" \
+            https://api.github.com/repos/anomalyco/opencode/releases | \
             jq -r '[.[] | select(.prerelease == false and .draft == false)][0]')
 
           # Extract tag name
@@ -71,7 +72,8 @@ jobs:
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
           # Fetch required Bun version from upstream package.json
-          BUN_VERSION=$(curl -fsSL "https://raw.githubusercontent.com/anomalyco/opencode/${TAG}/package.json" | \
+          BUN_VERSION=$(curl -fsSL -H "Authorization: token $GITHUB_TOKEN" \
+            "https://raw.githubusercontent.com/anomalyco/opencode/${TAG}/package.json" | \
             jq -r '.packageManager // empty' | sed 's/^bun@//')
 
           if [ -z "$BUN_VERSION" ]; then
@@ -88,6 +90,8 @@ jobs:
           echo "🏷️  Our release tag: $RELEASE_TAG"
           echo "📊 Assets in release: $ASSET_COUNT"
           echo "🔧 Required Bun version: $BUN_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
   check-release:
     runs-on: ubuntu-22.04
