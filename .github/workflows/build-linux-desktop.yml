@@ -26,7 +26,7 @@ jobs:
       bun_version: ${{ steps.fetch.outputs.bun_version }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
@@ -100,7 +100,7 @@ jobs:
       exists: ${{ steps.check.outputs.exists }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check if release exists
         id: check
@@ -128,7 +128,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout tag
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: anomalyco/opencode
           ref: ${{ needs.find-tag.outputs.tag }}
@@ -192,14 +192,14 @@ jobs:
     timeout-minutes: 75
     steps:
       - name: Checkout tag
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: anomalyco/opencode
           ref: ${{ needs.find-tag.outputs.tag }}
           fetch-tags: true
 
       - name: Checkout build configuration
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ubuntu2204-builds
           path: .build-config
@@ -307,7 +307,7 @@ jobs:
     if: needs.check-release.outputs.exists == 'false'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download artifact
         uses: actions/download-artifact@v4
