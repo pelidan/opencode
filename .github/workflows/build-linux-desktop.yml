@@ -3,6 +3,12 @@ run-name: "Build desktop app from latest release"
 
 on:
   workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: "Delete existing release and rebuild"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "0 2 * * *" # Run daily at 2 AM UTC
 
@@ -96,8 +102,14 @@ jobs:
         id: check
         run: |
           if gh release view "${{ needs.find-tag.outputs.release_tag }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Release ${{ needs.find-tag.outputs.release_tag }} already exists, skipping build"
+            if [ "${{ inputs.force_rebuild }}" = "true" ]; then
+              echo "🔄 Force rebuild requested, deleting existing release ${{ needs.find-tag.outputs.release_tag }}"
+              gh release delete "${{ needs.find-tag.outputs.release_tag }}" --yes --cleanup-tag || true
+              echo "exists=false" >> $GITHUB_OUTPUT
+            else
+              echo "exists=true" >> $GITHUB_OUTPUT
+              echo "✅ Release ${{ needs.find-tag.outputs.release_tag }} already exists, skipping build"
+            fi
           else
             echo "exists=false" >> $GITHUB_OUTPUT
             echo "🚀 Release ${{ needs.find-tag.outputs.release_tag }} does not exist, proceeding with build"
@@ -247,6 +259,7 @@ jobs:
         run: |
           mkdir -p packages/desktop/src-tauri/target/opencode-binaries
           mv packages/desktop/src-tauri/target/opencode-binaries-temp/* packages/desktop/src-tauri/target/opencode-binaries/
+          find packages/desktop/src-tauri/target/opencode-binaries -name 'opencode' -type f -exec chmod +x {} +
           ls -la packages/desktop/src-tauri/target/opencode-binaries/
           echo "✅ CLI binary moved to expected location"
 
