@@ -1,3 +1,5 @@
+# don't read further - the original opencode-desktop works on Ununtu 22.04 since its rewrite from Tauri to Electron, you don't need this anymore
+
 # opencode-desktop for Ubuntu 22.04
 
 Fork of [anomalyco/opencode](https://github.com/anomalyco/opencode) that builds the desktop app (`.deb`) targeting **Ubuntu 22.04 (x86_64)**.
